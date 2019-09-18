@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	hostsFilename    = "hosts"                // Your hostfile, on unix this should be /etc/hosts
+	hostsFilename    = "hosts"                // Your hostfile
 	backupFilename   = "hosts.bak"            // The name of the backup to create the first time
 	hostURLSFilename = "adhosts.cfg"          // this file holds the urls of hour adfilter-hostfiles
 	divisionTag      = "<-hosts-separation->" // a line holding this tag divides your personal part from the adhosts
@@ -60,7 +60,7 @@ func main() {
 
 	var URLs []string
 	if _, err := os.Stat(backup); os.IsNotExist(err) {
-		log.Printf("Creating a copy of hour hosts-file %s as %s.\n", hosts, backup)
+		log.Printf("Creating a copy of your hosts-file %s as %s.\n", hosts, backup)
 		makeBackup(hosts, backup)
 	}
 
