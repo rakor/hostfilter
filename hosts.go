@@ -18,10 +18,15 @@ const (
 	backupFilename   = "hosts.bak"            // The name of the backup to create the first time
 	hostURLSFilename = "adhosts.cfg"          // this file holds the urls of hour adfilter-hostfiles
 	divisionTag      = "<-hosts-separation->" // a line holding this tag divides your personal part from the adhosts
-	divisionLine     = "# " + divisionTag + " <-- DO NOT CHANGE THIS LINE. Any changes after this line will be lost!!\n"
-	address          = "0.0.0.0"
-	rexFindDivision  = `^\S*#.*` + divisionTag
-	rexHostname      = `^\s*((127.0.0.1|0.0.0.0)\s+)?([^#\s]+)`
+	address          = "0.0.0.0"              // This IP will be set for the ad-Hosts
+	// This line will be added to hosts to separate the original hosts from the ad-hosts
+	divisionLine = "# " + divisionTag + " <-- DO NOT CHANGE THIS LINE. Any changes after this line will be lost!!\n"
+)
+
+// Regexp
+const (
+	rexFindDivision = `^\S*#.*` + divisionTag
+	rexHostname     = `^\s*((127.0.0.1|0.0.0.0)\s+)?([^#\s]+)`
 )
 
 type hostlist struct {
@@ -58,18 +63,22 @@ func main() {
 	adList.initHostlist()
 	ownHosts := new([]string)
 
-	var URLs []string
+	// Backup hostsfile if no Backup is present.
 	if _, err := os.Stat(backup); os.IsNotExist(err) {
 		log.Printf("Creating a copy of your hosts-file %s as %s.\n", hosts, backup)
 		makeBackup(hosts, backup)
 	}
 
+	fmt.Printf("Reading hosts from your hostfile in %s\n", hosts)
 	ownHosts, adList = hostsUntilDivide(hosts, ownHosts, adList)
 
+	var URLs []string
 	if _, err := os.Stat(hostURLSFilename); !os.IsNotExist(err) {
+		fmt.Printf("Reading ad-hosts from %s\n", hostURLSFilename)
 		URLs = append(URLs, readHostURLS(hostURLSFilename)...)
 	}
 	if _, err := os.Stat(hostURLs); !os.IsNotExist(err) {
+		fmt.Printf("Reading ad-hosts from %s\n", hostURLs)
 		URLs = append(URLs, readHostURLS(hostURLs)...)
 	}
 	if len(URLs) == 0 {
@@ -90,7 +99,10 @@ func main() {
 			}
 		}
 	}
-	writeNewHosts(hosts, ownHosts, adList)
+	fmt.Printf("Writing new hostfile in %s\n", hosts)
+	if err := writeNewHosts(hosts, ownHosts, adList); err != nil {
+		log.Fatal(err)
+	}
 }
 
 // Returns the content of the hosts-file up to the division (So your own
