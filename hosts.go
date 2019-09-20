@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strings"
 )
 
 const (
@@ -163,7 +164,7 @@ func hostnameFromLine(line string) (hostname string, ok bool) {
 	if len(hostLine) != 4 {
 		return "", false
 	}
-	if hostLine[3] == "localhost" {
+	if (hostLine[3] == "localhost") || (hostLine[3] == "localhost.localdomain") {
 		return "", false
 	}
 	return hostLine[3], true
@@ -215,18 +216,45 @@ func readHostURLS(hostURLS string) []string {
 
 // Fetch the content of a given URL and return its lines as []string
 func fetchURL(url string) ([]string, error) {
+	const (
+		filetype = iota
+		httptype
+	)
 	var content []string
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
+	var urltype int
+	var scanner *bufio.Scanner
+	var resp *http.Response
+	var err error
+
+	//if url begins with file:// read the file manually
+	url = strings.TrimSpace(url)
+	if strings.ToLower(url[:7]) == "file://" {
+		urltype = filetype
+		file, err := os.Open(url[7:])
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+		scanner = bufio.NewScanner(file)
+	} else {
+		// yes this is error-prone
+		urltype = httptype
+
+		//no file:// URL will be handeled by http
+		resp, err = http.Get(url)
+		if err != nil {
+			return nil, err
+		}
+		scanner = bufio.NewScanner(resp.Body)
 	}
-	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
 		content = append(content, scanner.Text())
 	}
-	resp.Body.Close()
-	if err != nil {
-		return nil, err
+	if urltype == httptype {
+		resp.Body.Close()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return content, nil
 }
