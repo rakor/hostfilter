@@ -7,10 +7,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"runtime"
-	"sort"
 	"strings"
 )
 
@@ -30,35 +29,14 @@ const (
 	rexHostname     = `^\s*((127.0.0.1|0.0.0.0)\s+)?([^#\s]+)`
 )
 
-type hostlist struct {
-	sort []string
-	list map[string]bool
-}
-
-func (h *hostlist) append(host string) {
-	if h.list[host] == false {
-		h.list[host] = true
-		h.sort = append(h.sort, host)
-	}
-}
-
-func (h *hostlist) initHostlist() {
-	h.list = make(map[string]bool)
-}
-
-func (h *hostlist) getList() []string {
-	sort.Strings(h.sort)
-	return h.sort
-}
-
 func main() {
-	etcPath := setPathsByOS()
+	etcPath, configPath := setPathsByOS()
 	if etcPath == "" {
 		log.Fatal("Could not determin your systemtype")
 	}
-	hosts := path.Join(etcPath, hostsFilename)
-	backup := path.Join(etcPath, backupFilename)
-	hostURLs := path.Join(etcPath, hostURLSFilename)
+	hosts := filepath.Join(etcPath, hostsFilename)
+	backup := filepath.Join(etcPath, backupFilename)
+	hostURLs := filepath.Join(configPath, hostURLSFilename)
 
 	adList := new(hostlist)
 	adList.initHostlist()
@@ -259,16 +237,21 @@ func fetchURL(url string) ([]string, error) {
 	return content, nil
 }
 
-func setPathsByOS() string {
-	var etcPath string
+//returns the path for the hostsfile and the configuration
+func setPathsByOS() (string, string) {
+	var (
+		etcPath    string
+		configPath string
+	)
 	switch osname := runtime.GOOS; osname {
 	case "linux":
-		etcPath = "/etc/"
+		etcPath, configPath = "/etc/", "/etc/"
 	case "freebsd":
-		etcPath = "/usr/local/etc/"
+		etcPath, configPath = "/etc/", "/usr/local/etc/"
 	case "windows":
 		windir := os.Getenv("windir")
-		etcPath = path.Join(windir, "system32/drivers/etc")
+		etcPath = filepath.Join(windir, "system32\\drivers\\etc\\")
+		configPath = "C:\\"
 	}
-	return etcPath
+	return etcPath, configPath
 }
